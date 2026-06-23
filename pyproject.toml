@@ -50,8 +50,6 @@ Repository = "https://github.com/amitpatole/vitel"
 
 [project.scripts]
 vitel = "vitel.adapters.cli:main"
-vitel-mcp = "vitel.adapters.mcp:main"
-vitel-serve = "vitel.adapters.rest:main"
 
 [project.entry-points."vitel.backends"]
 file = "vitel.backends.file:FileBackend"
