@@ -16,7 +16,7 @@ __version__ = "0.0.0"
 
 if TYPE_CHECKING:  # import-time names for type checkers only
     from .config import Settings
-    from .core import Vitals, analyze, check, render, watch
+    from .core import Vitals, analyze, check, perceive, render, watch
     from .models import Issue, IssueKind, IssueSource, Metric, RenderResult, Report
     from .slo import SLO
 
@@ -24,6 +24,7 @@ _LAZY = {
     "check": ("vitel.core", "check"),
     "analyze": ("vitel.core", "analyze"),
     "watch": ("vitel.core", "watch"),
+    "perceive": ("vitel.core", "perceive"),
     "render": ("vitel.core", "render"),
     "Vitals": ("vitel.core", "Vitals"),
     "Settings": ("vitel.config", "Settings"),
@@ -51,6 +52,7 @@ __all__ = [
     "check",
     "analyze",
     "watch",
+    "perceive",
     "render",
     "Vitals",
     "Settings",

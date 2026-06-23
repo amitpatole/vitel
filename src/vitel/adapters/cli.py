@@ -10,6 +10,7 @@ from .. import __version__
 from ..config import Settings
 from ..core import analyze as _analyze
 from ..core import check as _check
+from ..core import perceive as _perceive
 from ..core import render as _render
 from ..core import watch as _watch
 from ..errors import VitelError
@@ -55,6 +56,15 @@ def _print_report(report) -> None:
         typer.echo(f"  - [{issue.severity.value}] {issue.kind.value}: {issue.message}")
 
 
+def _gate_code(verdict: str, warn_as_fail: bool) -> int:
+    """CI gate exit code: 1 on FAIL (and on WARN when --warn-as-fail), else 0."""
+    if verdict == "fail":
+        return 1
+    if verdict == "warn" and warn_as_fail:
+        return 1
+    return 0
+
+
 @app.command()
 def check(
     source: str = typer.Argument(..., help="Path to a JSON/CSV series file, or inline JSON."),
@@ -64,6 +74,9 @@ def check(
     slo: str = typer.Option(None, "--slo", help="Free-text SLO description."),
     backend: str = typer.Option(None, "--backend", "-b", help="Backend name (default: file)."),
     window: float = typer.Option(None, "--window", "-w", help="Evaluation window (seconds)."),
+    warn_as_fail: bool = typer.Option(
+        False, "--warn-as-fail", help="Exit non-zero on WARN too (stricter deploy gate)."
+    ),
     json_out: bool = typer.Option(False, "--json", help="Emit the full Report as JSON."),
 ) -> None:
     """Deterministically grade a telemetry source. Exits non-zero on FAIL (CI gate)."""
@@ -79,7 +92,7 @@ def check(
         typer.echo(report.model_dump_json(indent=2))
     else:
         _print_report(report)
-    raise typer.Exit(code=1 if report.verdict.value == "fail" else 0)
+    raise typer.Exit(code=_gate_code(report.verdict.value, warn_as_fail))
 
 
 @app.command()
@@ -147,6 +160,26 @@ def analyze(
     else:
         _print_report(report)
     raise typer.Exit(code=1 if report.verdict.value == "fail" else 0)
+
+
+@app.command()
+def perceive(
+    source: str = typer.Argument(..., help="Path to a JSON/CSV series file, or inline JSON."),
+    expect: list[str] = typer.Option(None, "--expect", "-e", help="A requirement (repeatable)."),
+    slo: str = typer.Option(None, "--slo", help="Free-text SLO description."),
+    backend: str = typer.Option(None, "--backend", "-b", help="Backend name."),
+    window: float = typer.Option(None, "--window", "-w", help="Evaluation window (seconds)."),
+) -> None:
+    """Emit the afferent Handoff (for a brain like Verel) as JSON. Exits non-zero unless next_action=done."""
+    try:
+        handoff = asyncio.run(
+            _perceive(source, slo=_slo_from(slo, expect), settings=Settings(), backend=backend, window_s=window)
+        )
+    except VitelError as e:
+        typer.echo(f"error: {e}", err=True)
+        raise typer.Exit(code=2) from None
+    typer.echo(handoff.model_dump_json(indent=2))
+    raise typer.Exit(code=0 if handoff.next_action.value == "done" else 1)
 
 
 @app.command()

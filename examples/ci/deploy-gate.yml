@@ -1,0 +1,42 @@
+# Example: gate a deploy on post-rollout vitals (error-budget burn).
+# Drop into .github/workflows/ and adapt the deploy step + metrics source.
+name: deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Deploy
+        run: ./deploy.sh   # your rollout
+
+      - name: Wait for metrics to settle
+        run: sleep 120
+
+      - name: Install vitel
+        run: pip install "vitel[prometheus]"
+
+      # Fails the job (exit 1) if a must: threshold is violated or the error budget is burning,
+      # which gates / triggers a rollback. Use --warn-as-fail for a stricter gate.
+      - name: Post-deploy vitals gate
+        run: |
+          vitel check 'sum(rate(http_requests_total{status=~"5.."}[5m]))/sum(rate(http_requests_total[5m]))' \
+            --backend prometheus \
+            --expect "availability 99.9%" \
+            --expect "must: error_budget_remaining > 20%" \
+            --window 600
+        env:
+          VITEL_PROMETHEUS_URL: ${{ secrets.PROMETHEUS_URL }}
+
+      - name: Roll back on failed vitals
+        if: failure()
+        run: ./rollback.sh

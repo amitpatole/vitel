@@ -1,0 +1,26 @@
+{
+  "id": "post_deploy_vitals_gate",
+  "description": "After a rollout, grade vitals against the SLO/error-budget; withhold 'done' on FAIL.",
+  "sense": "vitel",
+  "transport": "mcp",
+  "tool": "vitals_check",
+  "trigger": "phase == 'post_deploy'",
+  "inputs": {
+    "source": "${PROM_QUERY}",
+    "backend": "prometheus",
+    "expect": [
+      "availability 99.9%",
+      "must: error_budget_remaining > 20%",
+      "should: p99(latency_ms) < 300ms"
+    ],
+    "window": 600
+  },
+  "gate": {
+    "tier": "grounded",
+    "blocks_on": ["fail"],
+    "clamp_llm_to": "warn",
+    "on_fail_next_action": "revise"
+  },
+  "deps": ["vitel"],
+  "remediation_skill": "skills/rollback_on_budget_burn/SKILL.md"
+}
