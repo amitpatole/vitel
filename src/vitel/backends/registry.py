@@ -23,6 +23,22 @@ def resolve_backend(name: str | None = None, settings: Settings | None = None) -
         from .prometheus import PrometheusBackend
 
         return PrometheusBackend(settings)
+    if name in ("scrape", "metrics", "openmetrics"):
+        from .scrape import ScrapeBackend
+
+        return ScrapeBackend(settings)
+    if name in ("otel", "otlp"):
+        from .otel import OTLPBackend
+
+        return OTLPBackend(settings)
+    if name in ("psutil", "self", "selfstat"):
+        from .selfstat import SelfStatBackend
+
+        return SelfStatBackend(settings)
+    if name in ("datadog", "cloudwatch"):
+        from .cloud import CloudBackend
+
+        return CloudBackend(settings, provider=name)
 
     for ep in entry_points(group=_ENTRY_GROUP):
         if ep.name == name:

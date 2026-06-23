@@ -75,7 +75,7 @@ class PrometheusBackend:
         end = time.time()
         start = end - window
         step = max(window / 250.0, 1.0)  # keep the point count bounded
-        params = {"query": source, "start": start, "end": end, "step": step}
+        params: dict[str, str | float] = {"query": source, "start": start, "end": end, "step": step}
 
         try:
             async with httpx.AsyncClient(timeout=self.settings.request_timeout_s) as client:
