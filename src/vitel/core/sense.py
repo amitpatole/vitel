@@ -10,7 +10,7 @@ from __future__ import annotations
 from ..config import Settings
 from ..models import Report
 from ..slo import SLO
-from .check import check
+from .analyze import analyze
 
 
 class Vitals:
@@ -23,14 +23,18 @@ class Vitals:
         return True
 
     async def analyze(self, source: str, **kwargs: object) -> Report:
-        """Grade ``source``. Accepts ``slo``, ``backend`` and ``window_s`` keyword args."""
+        """Grade ``source`` (deterministic + anomaly + optional LLM critique).
+
+        Accepts ``slo``, ``backend``, ``window_s`` and ``use_llm`` keyword args.
+        """
         slo = kwargs.get("slo")
         backend = kwargs.get("backend")
         window_s = kwargs.get("window_s")
-        return await check(
+        return await analyze(
             source,
             slo=slo if isinstance(slo, SLO) else None,
             settings=self.settings,
             backend=backend if isinstance(backend, str) else None,
             window_s=window_s if isinstance(window_s, (int, float)) else None,
+            use_llm=bool(kwargs.get("use_llm", False)),
         )

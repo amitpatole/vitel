@@ -8,8 +8,10 @@ import typer
 
 from .. import __version__
 from ..config import Settings
+from ..core import analyze as _analyze
 from ..core import check as _check
 from ..core import render as _render
+from ..core import watch as _watch
 from ..errors import VitelError
 from ..slo import SLO
 from .doctor import run_checks
@@ -93,6 +95,58 @@ def render(
         typer.echo(f"error: {e}", err=True)
         raise typer.Exit(code=2) from None
     typer.echo(result.model_dump_json(indent=2))
+
+
+@app.command()
+def watch(
+    source: str = typer.Argument(..., help="Source (file/inline, or a URL for live backends)."),
+    expect: list[str] = typer.Option(None, "--expect", "-e", help="A requirement (repeatable)."),
+    slo: str = typer.Option(None, "--slo", help="Free-text SLO description."),
+    backend: str = typer.Option(None, "--backend", "-b", help="Backend name."),
+    window: float = typer.Option(None, "--window", "-w", help="Total window (seconds)."),
+    interval: float = typer.Option(None, "--interval", "-i", help="Poll interval for live backends."),
+    json_out: bool = typer.Option(False, "--json", help="Emit the full Report as JSON."),
+) -> None:
+    """Grade a source over time: trend, degradation, liveness. Exits non-zero on FAIL."""
+    try:
+        report = asyncio.run(
+            _watch(source, window=window, interval=interval, slo=_slo_from(slo, expect),
+                   settings=Settings(), backend=backend)
+        )
+    except VitelError as e:
+        typer.echo(f"error: {e}", err=True)
+        raise typer.Exit(code=2) from None
+    if json_out:
+        typer.echo(report.model_dump_json(indent=2))
+    else:
+        _print_report(report)
+    raise typer.Exit(code=1 if report.verdict.value == "fail" else 0)
+
+
+@app.command()
+def analyze(
+    source: str = typer.Argument(..., help="Path to a JSON/CSV series file, or inline JSON."),
+    expect: list[str] = typer.Option(None, "--expect", "-e", help="A requirement (repeatable)."),
+    slo: str = typer.Option(None, "--slo", help="Free-text SLO description."),
+    backend: str = typer.Option(None, "--backend", "-b", help="Backend name."),
+    window: float = typer.Option(None, "--window", "-w", help="Evaluation window (seconds)."),
+    no_llm: bool = typer.Option(False, "--no-llm", help="Skip the optional LLM critique."),
+    json_out: bool = typer.Option(False, "--json", help="Emit the full Report as JSON."),
+) -> None:
+    """Deterministic grade + anomaly/trend detection + optional LLM critique. Exits non-zero on FAIL."""
+    try:
+        report = asyncio.run(
+            _analyze(source, slo=_slo_from(slo, expect), settings=Settings(), backend=backend,
+                     window_s=window, use_llm=not no_llm)
+        )
+    except VitelError as e:
+        typer.echo(f"error: {e}", err=True)
+        raise typer.Exit(code=2) from None
+    if json_out:
+        typer.echo(report.model_dump_json(indent=2))
+    else:
+        _print_report(report)
+    raise typer.Exit(code=1 if report.verdict.value == "fail" else 0)
 
 
 @app.command()
