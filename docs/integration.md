@@ -68,6 +68,6 @@ Because a failing verdict yields `next_action = REVISE` (and a passing one `DONE
 
 Verel mounts vitel either over MCP (`vitel-mcp`: `vitals_check` / `vitals_watch` / `vitals_status`)
 or by importing `vitel.Vitals`. A ready-to-drop recipe is in
-[`examples/verel/post_deploy_vitals.recipe.json`](../examples/verel/post_deploy_vitals.recipe.json):
+[`examples/verel/post_deploy_vitals.recipe.json`](https://github.com/amitpatole/vitel/blob/main/examples/verel/post_deploy_vitals.recipe.json):
 it triggers a post-deploy `vitals_check`, treats a `fail` verdict as a blocking gate, and lists the
 remediation skill. Register it in Verel's sense/recipe registry (per the Verel repo's instructions).
