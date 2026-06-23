@@ -18,6 +18,7 @@ from agentsensory import (
 )
 
 from ..models import Issue, IssueKind, IssueSource, Metric
+from ..signals.burnrate import derived_budget_series
 from ..signals.series import TimeSeries
 from ..signals.stats import aggregate
 from ..slo import SLO, Threshold
@@ -28,6 +29,17 @@ _SEVERITY = {
     Importance.SHOULD: Severity.WARNING,
     Importance.NICE: Severity.INFO,
 }
+
+# Derived budget metrics → an error-budget-burn issue (not a generic SLO violation).
+_BUDGET_METRICS = {"burn_rate", "burn_rate_fast", "error_budget_remaining"}
+
+
+def _issue_kind_for(metric: str) -> IssueKind:
+    return IssueKind.ERROR_BUDGET_BURN if metric in _BUDGET_METRICS else IssueKind.SLO_VIOLATION
+
+
+def _issue_source_for(metric: str) -> IssueSource:
+    return IssueSource.BURN_RATE if metric in _BUDGET_METRICS else IssueSource.SLO
 
 
 @dataclass
@@ -66,6 +78,15 @@ def evaluate(series: list[TimeSeries], slo: SLO | None) -> GradeResult:
                 )
             )
         return result
+
+    # Compute derived budget metrics (burn_rate, error_budget_remaining) when a target is set so
+    # thresholds can reference them like any other metric.
+    if slo.availability_target is not None:
+        for d in derived_budget_series(
+            by_name, target=slo.availability_target, error_metric=slo.error_metric,
+            reducer=slo.budget_reducer,
+        ):
+            by_name[d.name] = d
 
     claims: list[ClaimResult] = []
     for th in slo.thresholds:
@@ -121,12 +142,14 @@ def evaluate(series: list[TimeSeries], slo: SLO | None) -> GradeResult:
             )
         )
         if not ok:
+            kind = _issue_kind_for(th.metric)
+            label = "error budget burning" if kind == IssueKind.ERROR_BUDGET_BURN else "SLO violated"
             result.issues.append(
                 Issue.vital(
-                    IssueKind.SLO_VIOLATION,
+                    kind,
                     _SEVERITY[th.importance],
-                    f"SLO violated: {th.expr} (observed {observed:g})",
-                    source=IssueSource.SLO,
+                    f"{label}: {th.expr} (observed {observed:g})",
+                    source=_issue_source_for(th.metric),
                     metric=metric,
                     confidence=Confidence.HIGH,
                 )

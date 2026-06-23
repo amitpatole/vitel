@@ -47,6 +47,12 @@ def _slo_from(slo_text: str | None, expect: list[str] | None) -> SLO | None:
     return None if s.is_empty() else s
 
 
+def _print_report(report) -> None:
+    typer.echo(f"{report.verdict.value.upper()}: {report.summary}")
+    for issue in report.issues:
+        typer.echo(f"  - [{issue.severity.value}] {issue.kind.value}: {issue.message}")
+
+
 @app.command()
 def check(
     source: str = typer.Argument(..., help="Path to a JSON/CSV series file, or inline JSON."),
@@ -70,9 +76,7 @@ def check(
     if json_out:
         typer.echo(report.model_dump_json(indent=2))
     else:
-        typer.echo(f"{report.verdict.value.upper()}: {report.summary}")
-        for issue in report.issues:
-            typer.echo(f"  - [{issue.severity.value}] {issue.kind.value}: {issue.message}")
+        _print_report(report)
     raise typer.Exit(code=1 if report.verdict.value == "fail" else 0)
 
 
@@ -89,6 +93,27 @@ def render(
         typer.echo(f"error: {e}", err=True)
         raise typer.Exit(code=2) from None
     typer.echo(result.model_dump_json(indent=2))
+
+
+@app.command()
+def demo() -> None:
+    """Grade a synthetic degrading service (budget-burn FAIL) then its fix (PASS). No API key."""
+    from ._demo_assets import degrading_source, demo_slo, healthy_source
+
+    slo = demo_slo()
+    typer.echo("vitel demo — synthetic service graded against a 99.9% SLO (no API key, no network)\n")
+
+    typer.echo("1) degrading service:")
+    before = asyncio.run(_check(degrading_source(), slo=slo, settings=Settings()))
+    _print_report(before)
+
+    typer.echo("\n2) after the fix:")
+    after = asyncio.run(_check(healthy_source(), slo=slo, settings=Settings()))
+    _print_report(after)
+
+    ok = before.verdict.value == "fail" and after.verdict.value == "pass"
+    typer.echo("\n" + ("demo OK: budget-burn FAIL → fixed → PASS" if ok else "demo did not behave as expected"))
+    raise typer.Exit(code=0 if ok else 1)
 
 
 def main() -> None:

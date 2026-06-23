@@ -19,6 +19,10 @@ def resolve_backend(name: str | None = None, settings: Settings | None = None) -
 
     if name == "file":
         return FileBackend(settings)
+    if name in ("prometheus", "prom"):
+        from .prometheus import PrometheusBackend
+
+        return PrometheusBackend(settings)
 
     for ep in entry_points(group=_ENTRY_GROUP):
         if ep.name == name:
