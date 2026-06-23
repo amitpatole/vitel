@@ -79,3 +79,31 @@ def test_watch_poll_live_backend_accumulates(monkeypatch) -> None:
     monkeypatch.setattr(watch_mod.asyncio, "sleep", _no_sleep)
     r = _run(watch_mod.watch("http://x/metrics", window=4, interval=1))
     assert any(i.kind == IssueKind.LATENCY_REGRESSION for i in r.issues)
+
+
+def test_watch_poll_count_is_bounded(monkeypatch) -> None:
+    # DoS guard: a tiny interval over a huge window must not exceed settings.max_polls.
+    import importlib
+
+    from vitel.config import Settings
+    from vitel.signals.series import TimeSeries
+
+    watch_mod = importlib.import_module("vitel.core.watch")
+    calls = {"n": 0}
+
+    class FakeBackend:
+        name = "scrape"
+
+        async def fetch(self, source, *, window_s=None):
+            calls["n"] += 1
+            return [TimeSeries(name="x", points=[(0.0, 1.0)])]
+
+    monkeypatch.setattr(watch_mod, "resolve_backend", lambda *a, **k: FakeBackend())
+
+    async def _no_sleep(*_a, **_k):
+        return None
+
+    monkeypatch.setattr(watch_mod.asyncio, "sleep", _no_sleep)
+    _run(watch_mod.watch("http://x/metrics", window=10_000, interval=0.001,
+                         settings=Settings(max_polls=5)))
+    assert calls["n"] == 5

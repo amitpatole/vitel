@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     # Resource caps (bound anything an attacker / bad input controls)
     max_source_bytes: int = 50_000_000
     max_points: int = 1_000_000
+    max_polls: int = 600  # hard cap on watch() poll iterations (bounds a live-watch request)
     request_timeout_s: float = 30.0
 
     # SSRF policy for remote metric sources

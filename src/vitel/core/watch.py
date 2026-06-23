@@ -25,7 +25,7 @@ _LIVE_BACKENDS = {"scrape", "prometheus", "psutil", "datadog", "cloudwatch"}
 async def _poll(be, source: str, window_s: float, interval: float, settings: Settings) -> list[TimeSeries]:
     """Poll a single-snapshot backend every ``interval`` seconds, accumulating a series."""
     polls = max(2, int(window_s / interval))
-    polls = min(polls, settings.max_points)
+    polls = min(polls, settings.max_polls)  # bound the loop (DoS guard for live /watch)
     acc: dict[str, TimeSeries] = {}
     start = time.monotonic()
     for i in range(polls):
