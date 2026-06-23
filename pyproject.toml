@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vitel"
-version = "0.0.0"
+version = "0.1.0"
 description = "Vitals for AI Agents — graded observability returning pass/warn/fail on metrics, SLOs and error budgets, with each finding grounded in a Metric. Sibling to AgentVision (eyes), Audel (ears) and Verel (brain)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,7 +12,7 @@ license = { text = "MIT" }
 authors = [{ name = "Amit Patole", email = "amit.patole@gmail.com" }]
 keywords = ["ai", "agents", "observability", "slo", "error-budget", "metrics", "sre", "sense"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",

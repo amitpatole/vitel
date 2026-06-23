@@ -9,8 +9,6 @@ contract — sibling to **AgentVision** (eyes), **Audel** (ears) and **Verel** (
 CI/CD to **gate a release on error-budget burn**, or run it as a Verel sense so the brain won't mark a
 deploy "done" until post-rollout vitals confirm health.
 
-> ⚠️ **Status: name reserved / scaffold (`0.0.0`).** The functional `0.1.0` release is in progress.
-
 ## What it does
 
 | Function | Behavior |

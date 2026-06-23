@@ -17,6 +17,16 @@ def test_version_matches_metadata() -> None:
     assert version("vitel") == vitel.__version__
 
 
+def test_version_matches_pyproject() -> None:
+    # Drift-guard (pre-install): the pyproject literal must equal __version__.
+    import tomllib
+    from pathlib import Path
+
+    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    assert data["project"]["version"] == vitel.__version__
+
+
 def test_light_import_pulls_no_heavy_deps() -> None:
     # Importing vitel must not drag in fastapi / prometheus / mcp / boto3 / opentelemetry.
     code = (
